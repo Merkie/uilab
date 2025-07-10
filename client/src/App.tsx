@@ -1077,6 +1077,24 @@ const [state, setState] = createStore<StageState>({
   selectedElements: {},
 });
 
+const clientId = createId();
+
+const [camera, setCamera] = createSignal({ x: 0, y: 0, zoom: 1 });
+const [mousePosition, setMousePosition] = createSignal({ x: 0, y: 0 });
+
+const [dragStart, setDragStart] = createSignal<
+  { mouseX: number; mouseY: number; target: DragTarget } | undefined
+>(undefined);
+
+const [panning, setPanning] = createSignal(false);
+const [contextMenuPosition, setContextMenuPosition] = createSignal<{
+  x: number;
+  y: number;
+} | null>(null);
+
+let stageRef: HTMLDivElement | undefined;
+let viewRef: HTMLDivElement | undefined;
+
 function Stage({
   class: className,
   initialState,
@@ -1088,23 +1106,6 @@ function Stage({
     if (initialState?.elements)
       setState("elements", initialState?.elements || {});
   });
-
-  let stageRef: HTMLDivElement | undefined;
-  let viewRef: HTMLDivElement | undefined;
-  const clientId = createId();
-
-  const [camera, setCamera] = createSignal({ x: 0, y: 0, zoom: 1 });
-  const [mousePosition, setMousePosition] = createSignal({ x: 0, y: 0 });
-
-  const [dragStart, setDragStart] = createSignal<
-    { mouseX: number; mouseY: number; target: DragTarget } | undefined
-  >(undefined);
-
-  const [panning, setPanning] = createSignal(false);
-  const [contextMenuPosition, setContextMenuPosition] = createSignal<{
-    x: number;
-    y: number;
-  } | null>(null);
 
   createEffect(() => {
     const cam = camera();
@@ -1294,23 +1295,52 @@ function Stage({
   }
 
   function handleZoom(delta: number, mouseX: number, mouseY: number) {
-    setCamera((prev) => {
-      const newZoom = prev.zoom * delta;
-      const clampedZoom = Math.max(0.1, Math.min(newZoom, 10));
+    const currentCamera = camera();
 
-      const mouseWorldX = (mouseX - prev.x) / prev.zoom;
-      const mouseWorldY = (mouseY - prev.y) / prev.zoom;
+    // Calculate the target zoom level and clamp it within min/max bounds.
+    const targetZoom = Math.max(0.1, Math.min(currentCamera.zoom * delta, 10));
 
-      const newX = mouseX - mouseWorldX * clampedZoom;
-      const newY = mouseY - mouseWorldY * clampedZoom;
+    // If the zoom is already at its limit, do nothing.
+    if (targetZoom === currentCamera.zoom) {
+      return;
+    }
 
-      return { x: newX, y: newY, zoom: clampedZoom };
+    // Stop any existing zoom animation to ensure a responsive feel.
+    gsap.killTweensOf(currentCamera);
+
+    // Calculate the world coordinates under the mouse before the zoom.
+    const mouseWorldX = (mouseX - currentCamera.x) / currentCamera.zoom;
+    const mouseWorldY = (mouseY - currentCamera.y) / currentCamera.zoom;
+
+    // Calculate the target camera position to keep the world point under the cursor.
+    const targetX = mouseX - mouseWorldX * targetZoom;
+    const targetY = mouseY - mouseWorldY * targetZoom;
+
+    // Use GSAP to animate the camera properties.
+    gsap.to(currentCamera, {
+      duration: 0.5,
+      ease: "power3.out",
+      x: targetX,
+      y: targetY,
+      zoom: targetZoom,
+      // On every frame of the animation, update the SolidJS signal.
+      onUpdate: () => {
+        setCamera({
+          x: currentCamera.x,
+          y: currentCamera.y,
+          zoom: currentCamera.zoom,
+        });
+      },
     });
   }
 
   function onWheel(event: WheelEvent) {
     event.preventDefault();
-    handleZoom(Math.pow(0.99, event.deltaY), event.clientX, event.clientY);
+    // pan the camera up and down
+    setCamera((prev) => ({
+      ...prev,
+      y: prev.y + event.deltaY / prev.zoom,
+    }));
   }
 
   function onKeyDown(event: KeyboardEvent) {
@@ -1540,6 +1570,76 @@ function ContextMenu({
           class="hover:bg-zinc-100 rounded-md p-1 px-2 cursor-pointer text-sm"
         >
           Organize Elements
+        </button>
+        <button
+          onClick={async () => {
+            if (!stageRef) return;
+            const viewportWidth = stageRef.clientWidth;
+            const viewportHeight = stageRef.clientHeight;
+
+            const selectedIds = state.selectedElements[clientId] || [];
+            const targetIds =
+              selectedIds.length > 0
+                ? selectedIds
+                : Object.keys(state.elements);
+
+            if (targetIds.length === 0) return;
+
+            const elementRects = targetIds.map((id) => state.elements[id].rect);
+
+            // 1. Calculate the bounding box of all elements
+            let minX = Infinity,
+              minY = Infinity,
+              maxX = -Infinity,
+              maxY = -Infinity;
+
+            elementRects.forEach((rect) => {
+              minX = Math.min(minX, rect.x);
+              minY = Math.min(minY, rect.y);
+              maxX = Math.max(maxX, rect.x + rect.width);
+              maxY = Math.max(maxY, rect.y + rect.height);
+            });
+
+            const boundingWidth = maxX - minX;
+            const boundingHeight = maxY - minY;
+
+            // Handle cases where elements have no area
+            if (boundingWidth <= 0 || boundingHeight <= 0) return;
+
+            // 2. Calculate the ideal zoom level with padding
+            const padding = 100; // Sets a 100px margin around the content
+            const targetZoom = Math.min(
+              (viewportWidth - padding * 2) / boundingWidth,
+              (viewportHeight - padding * 2) / boundingHeight,
+              2 // Cap zoom at 100% to avoid zooming in too far
+            );
+
+            // 3. Find the center of the bounding box
+            const boundingCenterX = minX + boundingWidth / 2;
+            const boundingCenterY = minY + boundingHeight / 2;
+
+            // 4. Calculate the camera's target position to center the content
+            const targetX = viewportWidth / 2 - boundingCenterX * targetZoom;
+            const targetY = viewportHeight / 2 - boundingCenterY * targetZoom;
+
+            // 5. Animate the camera to the new state using GSAP
+            const currentCamera = camera();
+            gsap.killTweensOf(currentCamera); // Stop any other camera animations
+
+            gsap.to(currentCamera, {
+              duration: 0.75,
+              ease: "power3.out",
+              x: targetX,
+              y: targetY,
+              zoom: targetZoom,
+              onUpdate: () => {
+                setCamera({ ...currentCamera }); // Update the state on each animation frame
+              },
+            });
+          }}
+          class="hover:bg-zinc-100 rounded-md p-1 px-2 cursor-pointer text-sm"
+        >
+          Fit Elements
         </button>
       </div>
     </Show>
