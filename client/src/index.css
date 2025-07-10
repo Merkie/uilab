@@ -4,7 +4,3 @@
 @theme {
   --font-sans: "Almarai", sans-serif;
 }
-
-body {
-  background-color: var(--color-zinc-100);
-}
