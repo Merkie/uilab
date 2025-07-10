@@ -138,7 +138,7 @@ function Stage({
           target: { type: "elements", initialRects },
         });
       });
-    } else if (stageRef?.contains(target)) {
+    } else if (stageRef === target) {
       setState("selectedElements", clientId, []);
       setDragStart({
         mouseX: event.clientX,
@@ -326,6 +326,7 @@ function Stage({
             width: "100%",
             height: "100%",
             transform: `translate(var(--camera-x), var(--camera-y))`,
+            "pointer-events": "none",
           }}
         >
           <For each={Object.entries(state.elements)}>
