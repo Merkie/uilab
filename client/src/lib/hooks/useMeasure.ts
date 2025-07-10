@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount } from 'solid-js';
+import { createSignal, onCleanup, onMount } from "solid-js";
 
 export default function useMeasure(elAccessor: () => HTMLElement | undefined) {
   const [size, setSize] = createSignal({ width: 0, height: 0 });
