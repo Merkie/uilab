@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
     "@solidjs/router": "^0.15.3",
     "@tailwindcss/vite": "^4.1.7",
     "clsx": "^2.1.1",
