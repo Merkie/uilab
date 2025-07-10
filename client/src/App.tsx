@@ -9,7 +9,7 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { createStore } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import useMeasure from "./lib/hooks/useMeasure";
 import useOutsideClick from "./lib/hooks/useOutsideClick";
@@ -49,7 +49,6 @@ function App() {
       class="w-full h-screen"
       initialState={{
         elements: [
-          // BUTTONS
           {
             type: "component",
             rect: { x: 50, y: 50, width: 0, height: 0, zIndex: 1 },
@@ -108,8 +107,6 @@ function App() {
               ),
             },
           },
-
-          // CHIPS/TAGS
           {
             type: "component",
             rect: { x: 50, y: 150, width: 0, height: 0, zIndex: 1 },
@@ -165,8 +162,6 @@ function App() {
               ),
             },
           },
-
-          // ALERTS
           {
             type: "component",
             rect: { x: 50, y: 250, width: 0, height: 0, zIndex: 1 },
@@ -1098,18 +1093,29 @@ function Stage({
   let viewRef: HTMLDivElement | undefined;
   const clientId = createId();
 
-  const [camera, setCamera] = createSignal({ x: 0, y: 0 });
+  const [camera, setCamera] = createSignal({ x: 0, y: 0, zoom: 1 });
+  const [mousePosition, setMousePosition] = createSignal({ x: 0, y: 0 });
 
   const [dragStart, setDragStart] = createSignal<
     { mouseX: number; mouseY: number; target: DragTarget } | undefined
   >(undefined);
 
   const [panning, setPanning] = createSignal(false);
-
   const [contextMenuPosition, setContextMenuPosition] = createSignal<{
     x: number;
     y: number;
   } | null>(null);
+
+  createEffect(() => {
+    const cam = camera();
+    if (viewRef) {
+      viewRef.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.zoom})`;
+    }
+    if (stageRef) {
+      stageRef.style.backgroundPosition = `${cam.x}px ${cam.y}px`;
+      stageRef.style.backgroundSize = `${40 * cam.zoom}px ${40 * cam.zoom}px`;
+    }
+  });
 
   function getResizeCursor(resizeDir: string | undefined) {
     if (!resizeDir) return "default";
@@ -1120,56 +1126,18 @@ function Stage({
     return "default";
   }
 
-  // Add these variables inside your Stage component
-  let panDelta = { x: 0, y: 0 };
-  let animationFrameId: number | null = null;
-
-  // This new function will run on every animation frame while panning
-  function panLoop() {
-    if (!panning()) {
-      animationFrameId = null;
-      return;
-    }
-
-    if (panDelta.x !== 0 || panDelta.y !== 0) {
-      setCamera((prev) => {
-        const newX = prev.x + panDelta.x;
-        const newY = prev.y + panDelta.y;
-
-        if (viewRef) {
-          viewRef.style.transform = `translate(${newX}px, ${newY}px)`;
-        }
-        if (stageRef) {
-          stageRef.style.backgroundPosition = `${newX}px ${newY}px`;
-        }
-
-        return { x: newX, y: newY };
-      });
-
-      // Reset the delta after applying it
-      panDelta = { x: 0, y: 0 };
-    }
-
-    animationFrameId = requestAnimationFrame(panLoop);
-  }
-
   function onMouseDown(event: MouseEvent) {
-    if (event.button === 1) {
+    if (event.button === 1 || (event.button === 0 && panning())) {
       event.preventDefault();
       setPanning(true);
-      panDelta = { x: 0, y: 0 }; // Reset on new pan
-      if (!animationFrameId) {
-        animationFrameId = requestAnimationFrame(panLoop);
-      }
     }
 
     const target = event.target as HTMLElement;
-    const resizeDir = target.getAttribute("data-resize-dir");
     const elementIdAttr = target.getAttribute("data-element-id");
+    const resizeDir = target.getAttribute("data-resize-dir");
 
-    // Check for resize handle click first
     if (resizeDir && elementIdAttr && state.elements[elementIdAttr]) {
-      event.stopPropagation(); // Prevent this from triggering an element drag
+      event.stopPropagation();
       setDragStart({
         mouseX: event.clientX,
         mouseY: event.clientY,
@@ -1183,17 +1151,15 @@ function Stage({
       return;
     }
 
-    // Then check for element click
-    const elementId = target.getAttribute("data-element-id");
-    if (elementId && state.elements[elementId]) {
+    if (elementIdAttr && state.elements[elementIdAttr]) {
       batch(() => {
-        if (!state.selectedElements[clientId]?.includes(elementId)) {
-          setState("selectedElements", clientId, [elementId]);
+        if (!state.selectedElements[clientId]?.includes(elementIdAttr)) {
+          setState("selectedElements", clientId, [elementIdAttr]);
           const maxZ = Math.max(
             0,
             ...Object.values(state.elements).map((el) => el.rect.zIndex)
           );
-          setState("elements", elementId, "rect", "zIndex", maxZ + 1);
+          setState("elements", elementIdAttr, "rect", "zIndex", maxZ + 1);
         }
 
         const initialRects = new Map<string, ElementState["rect"]>();
@@ -1218,64 +1184,57 @@ function Stage({
   }
 
   function onMouseMove(event: MouseEvent) {
+    setMousePosition({ x: event.clientX, y: event.clientY });
     const currentCamera = camera();
-    const worldX = event.clientX - currentCamera.x;
-    const worldY = event.clientY - currentCamera.y;
+
+    if (panning()) {
+      setCamera((prev) => ({
+        ...prev,
+        x: prev.x + event.movementX,
+        y: prev.y + event.movementY,
+      }));
+      return;
+    }
+
+    const worldX = (event.clientX - currentCamera.x) / currentCamera.zoom;
+    const worldY = (event.clientY - currentCamera.y) / currentCamera.zoom;
     setState("cursors", clientId, { x: worldX, y: worldY });
 
     const dragStartValue = dragStart();
     if (!dragStartValue) return;
 
-    if (panning()) {
-      // Just accumulate the delta. The panLoop will handle the update.
-      panDelta.x += event.movementX;
-      panDelta.y += event.movementY;
-      return; // Don't process other drag events while panning
-    }
-
-    const dx = event.clientX - dragStartValue.mouseX;
-    const dy = event.clientY - dragStartValue.mouseY;
+    const dx = (event.clientX - dragStartValue.mouseX) / currentCamera.zoom;
+    const dy = (event.clientY - dragStartValue.mouseY) / currentCamera.zoom;
 
     if (dragStartValue.target.type === "resize") {
       const { elementId, resizeDir, initialRect } = dragStartValue.target;
       if (!elementId || !resizeDir || !initialRect) return;
       let { x, y, width, height } = initialRect;
 
-      const MIN_SIZE = 20;
+      const MIN_SIZE = 20 / currentCamera.zoom;
 
-      // Calculate new dimensions based on direction
-      if (resizeDir.includes("right")) {
+      if (resizeDir.includes("right"))
         width = Math.max(MIN_SIZE, initialRect.width + dx);
-      } else if (resizeDir.includes("left")) {
+      if (resizeDir.includes("left"))
         width = Math.max(MIN_SIZE, initialRect.width - dx);
-      }
-
-      if (resizeDir.includes("bottom")) {
+      if (resizeDir.includes("bottom"))
         height = Math.max(MIN_SIZE, initialRect.height + dy);
-      } else if (resizeDir.includes("top")) {
+      if (resizeDir.includes("top"))
         height = Math.max(MIN_SIZE, initialRect.height - dy);
-      }
 
-      // Handle aspect ratio preservation on shift key
       if (event.shiftKey) {
         const aspectRatio = initialRect.width / initialRect.height;
-        const widthChange = Math.abs(width - initialRect.width);
-        const heightChange = Math.abs(height - initialRect.height);
-
-        if (widthChange > heightChange * aspectRatio) {
+        if (Math.abs(dx) > Math.abs(dy)) {
           height = width / aspectRatio;
         } else {
           width = height * aspectRatio;
         }
       }
 
-      // Reposition for left and top handles after dimensions are set
-      if (resizeDir.includes("left")) {
+      if (resizeDir.includes("left"))
         x = initialRect.x + initialRect.width - width;
-      }
-      if (resizeDir.includes("top")) {
+      if (resizeDir.includes("top"))
         y = initialRect.y + initialRect.height - height;
-      }
 
       setState("elements", elementId, "rect", (prev) => ({
         ...prev,
@@ -1287,10 +1246,10 @@ function Stage({
     } else if (dragStartValue.target.type === "elements") {
       batch(() => {
         for (const [
-          selectedId,
+          id,
           initialRect,
         ] of dragStartValue.target.initialRects!.entries()) {
-          setState("elements", selectedId, "rect", (prev) => ({
+          setState("elements", id, "rect", (prev) => ({
             ...prev,
             x: initialRect.x + dx,
             y: initialRect.y + dy,
@@ -1298,54 +1257,75 @@ function Stage({
         }
       });
     } else if (dragStartValue.target.type === "stage") {
-      const startWorldX = dragStartValue.mouseX - currentCamera.x;
-      const startWorldY = dragStartValue.mouseY - currentCamera.y;
-      setState(
-        "selectionBoxes",
-        produce((selectionBoxes) => {
-          selectionBoxes[clientId] = {
-            x: Math.min(startWorldX, worldX),
-            y: Math.min(startWorldY, worldY),
-            width: Math.abs(worldX - startWorldX),
-            height: Math.abs(worldY - startWorldY),
-            hidden: false,
-          };
-        })
-      );
+      const startWorldX =
+        (dragStartValue.mouseX - currentCamera.x) / currentCamera.zoom;
+      const startWorldY =
+        (dragStartValue.mouseY - currentCamera.y) / currentCamera.zoom;
+      setState("selectionBoxes", clientId, {
+        x: Math.min(startWorldX, worldX),
+        y: Math.min(startWorldY, worldY),
+        width: Math.abs(worldX - startWorldX),
+        height: Math.abs(worldY - startWorldY),
+        hidden: false,
+      });
     }
   }
 
   function onMouseUp(event: MouseEvent) {
-    if (event.button === 1) {
-      setPanning(false);
-    }
+    if (event.button === 1) setPanning(false);
     setDragStart(undefined);
 
-    if (
-      state.selectionBoxes[clientId] &&
-      !state.selectionBoxes[clientId].hidden
-    ) {
-      const box = state.selectionBoxes[clientId];
-      const selectedElements = Object.entries(state.elements)
-        .filter(([_, element]) => {
-          const rect = element.rect;
+    const selectionBox = state.selectionBoxes[clientId];
+    if (selectionBox && !selectionBox.hidden) {
+      const selected = Object.entries(state.elements)
+        .filter(([_, el]) => {
+          const rect = el.rect;
           return (
-            rect.x < box.x + box.width &&
-            rect.x + rect.width > box.x &&
-            rect.y < box.y + box.height &&
-            rect.y + rect.height > box.y
+            rect.x < selectionBox.x + selectionBox.width &&
+            rect.x + rect.width > selectionBox.x &&
+            rect.y < selectionBox.y + selectionBox.height &&
+            rect.y + rect.height > selectionBox.y
           );
         })
         .map(([id]) => id);
-      setState("selectedElements", clientId, selectedElements);
+      setState("selectedElements", clientId, selected);
       setState("selectionBoxes", clientId, "hidden", true);
     }
   }
 
+  function handleZoom(delta: number, mouseX: number, mouseY: number) {
+    setCamera((prev) => {
+      const newZoom = prev.zoom * delta;
+      const clampedZoom = Math.max(0.1, Math.min(newZoom, 10));
+
+      const mouseWorldX = (mouseX - prev.x) / prev.zoom;
+      const mouseWorldY = (mouseY - prev.y) / prev.zoom;
+
+      const newX = mouseX - mouseWorldX * clampedZoom;
+      const newY = mouseY - mouseWorldY * clampedZoom;
+
+      return { x: newX, y: newY, zoom: clampedZoom };
+    });
+  }
+
+  function onWheel(event: WheelEvent) {
+    event.preventDefault();
+    handleZoom(Math.pow(0.99, event.deltaY), event.clientX, event.clientY);
+  }
+
   function onKeyDown(event: KeyboardEvent) {
-    if (event.key === " " && !panning()) {
+    if (event.key === " " && !panning() && !dragStart()) {
       event.preventDefault();
       setPanning(true);
+    }
+
+    if (event.metaKey || event.ctrlKey) {
+      if (event.key === "=" || event.key === "-") {
+        event.preventDefault();
+        const zoomDirection = event.key === "=" ? 1.2 : 1 / 1.2;
+        const currentMousePos = mousePosition();
+        handleZoom(zoomDirection, currentMousePos.x, currentMousePos.y);
+      }
     }
   }
 
@@ -1356,11 +1336,7 @@ function Stage({
   function onContextMenu(event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
-
-    setContextMenuPosition({
-      x: event.clientX,
-      y: event.clientY,
-    });
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
   }
 
   onMount(() => {
@@ -1369,7 +1345,8 @@ function Stage({
     document.addEventListener("mouseup", onMouseUp);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
-    document.addEventListener("contextmenu", onContextMenu);
+    stageRef?.addEventListener("wheel", onWheel, { passive: false });
+    stageRef?.addEventListener("contextmenu", onContextMenu);
   });
 
   onCleanup(() => {
@@ -1378,7 +1355,8 @@ function Stage({
     document.removeEventListener("mouseup", onMouseUp);
     document.removeEventListener("keydown", onKeyDown);
     document.removeEventListener("keyup", onKeyUp);
-    document.removeEventListener("contextmenu", onContextMenu);
+    stageRef?.removeEventListener("wheel", onWheel);
+    stageRef?.removeEventListener("contextmenu", onContextMenu);
   });
 
   return (
@@ -1391,9 +1369,7 @@ function Stage({
             dragStart()?.target.type === "resize"
               ? getResizeCursor(dragStart()?.target.resizeDir)
               : panning()
-              ? dragStart()
-                ? "grabbing"
-                : "grab"
+              ? "grabbing"
               : "default",
         }}
       >
@@ -1401,13 +1377,15 @@ function Stage({
           ref={viewRef}
           style={{
             position: "absolute",
-            left: "0",
-            top: "0",
+            left: 0,
+            top: 0,
             width: "100%",
             height: "100%",
+            "transform-origin": "top left",
             "pointer-events": "none",
           }}
         >
+          {/* Elements and Selection Boxes are rendered inside this transformed div */}
           <For each={Object.entries(state.elements)}>
             {([id, element]) => (
               <div
@@ -1415,8 +1393,7 @@ function Stage({
                 style={{
                   position: "absolute",
                   "z-index": element.rect.zIndex,
-                  left: `${element.rect.x}px`,
-                  top: `${element.rect.y}px`,
+                  transform: `translate(${element.rect.x}px, ${element.rect.y}px)`,
                   width: `${element.rect.width}px`,
                   height: `${element.rect.height}px`,
                   "pointer-events":
@@ -1438,8 +1415,7 @@ function Stage({
               <div
                 class="bg-sky-500/10 border border-sky-500"
                 style={{
-                  left: `${box.x}px`,
-                  top: `${box.y}px`,
+                  transform: `translate(${box.x}px, ${box.y}px)`,
                   width: `${box.width}px`,
                   height: `${box.height}px`,
                   display: box.hidden ? "none" : "block",
@@ -1452,16 +1428,13 @@ function Stage({
         </div>
         <ContextMenu
           position={contextMenuPosition}
-          close={() => {
-            setContextMenuPosition(null);
-          }}
+          close={() => setContextMenuPosition(null)}
           clientId={clientId}
         />
       </main>
     </>
   );
 }
-// The rest of your components (ContextMenu, TestElement, etc.) remain the same.
 
 function ContextMenu({
   position,
