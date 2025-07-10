@@ -1489,7 +1489,7 @@ function ContextMenu({
     <Show when={position() !== null}>
       <div
         ref={setMenuRef}
-        class="absolute bg-white border border-gray-300 shadow-lg rounded-md p-1"
+        class="absolute flex flex-col bg-white border border-gray-300 shadow-lg rounded-md p-1"
         style={{
           left: `${position()!.x}px`,
           top: `${position()!.y}px`,
