@@ -1339,7 +1339,7 @@ function Stage({
     // pan the camera up and down
     setCamera((prev) => ({
       ...prev,
-      y: prev.y + event.deltaY / prev.zoom,
+      y: prev.y - event.deltaY / prev.zoom,
     }));
   }
 
