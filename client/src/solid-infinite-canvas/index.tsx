@@ -601,45 +601,22 @@ export const ElementTransformControls: Component<{ elementId: string }> = (
           class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="top left"
-          style={{
-            top: "0",
-            left: "0",
-            transform: "translate(-50%, -50%)",
-            cursor: "nwse-resize",
-          }}
+          style={{}}
         />
         <div
           class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="top right"
-          style={{
-            top: "0",
-            right: "0",
-            transform: "translate(50%, -50%)",
-            cursor: "nesw-resize",
-          }}
         />
         <div
           class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="bottom left"
-          style={{
-            bottom: "0",
-            left: "0",
-            transform: "translate(-50%, 50%)",
-            cursor: "nesw-resize",
-          }}
         />
         <div
           class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="bottom right"
-          style={{
-            bottom: "0",
-            right: "0",
-            transform: "translate(50%, 50%)",
-            cursor: "nwse-resize",
-          }}
         />
       </div>
     </Show>
