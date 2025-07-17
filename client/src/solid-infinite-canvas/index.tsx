@@ -604,3 +604,19 @@ export const ElementTransformControls: Component<{ elementId: string }> = (
     </Show>
   );
 };
+
+export function createInitialState(
+  elements: (Omit<ElementState, "rect"> & {
+    rect: Omit<ElementState["rect"], "zIndex">;
+  })[]
+) {
+  const initialState = elements.reduce((acc, el) => {
+    acc[createId()] = {
+      ...el,
+      rect: { ...el.rect, zIndex: 1 },
+    };
+    return acc;
+  }, {} as Record<string, ElementState>);
+
+  return { elements: initialState };
+}
