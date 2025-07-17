@@ -140,10 +140,10 @@ export const createStageStore: CreateStageStoreType = ({
 };
 
 const StageProvider: ParentComponent<{
-  store: StageContextType;
+  stage: StageContextType;
 }> = (props) => {
   return (
-    <StageContext.Provider value={props.store}>
+    <StageContext.Provider value={props.stage}>
       {props.children}
     </StageContext.Provider>
   );
@@ -161,10 +161,10 @@ export const useStage = () => {
 
 export const Stage: ParentComponent<{
   class?: string;
-  store: StageContextType;
+  stage: StageContextType;
 }> = (props) => {
   return (
-    <StageProvider store={props.store}>
+    <StageProvider stage={props.stage}>
       <StageCanvas class={props.class} />
       {props.children}
     </StageProvider>
