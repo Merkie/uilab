@@ -13,11 +13,97 @@ import {
   Setter,
   ValidComponent,
   Component,
+  JSX,
 } from "solid-js";
 import { createStore, SetStoreFunction, Store } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import gsap from "gsap";
-import styles from "./styles.module.css";
+
+// --- INLINE STYLES ---
+
+const styles: Record<string, JSX.CSSProperties> = {
+  stage: {
+    overflow: "hidden",
+    position: "relative",
+    "box-sizing": "border-box",
+    outline: "none",
+  },
+  view: {
+    position: "absolute",
+    left: "0px",
+    top: "0px",
+    width: "100%",
+    height: "100%",
+    "transform-origin": "0 0",
+  },
+  element: {
+    position: "absolute",
+    "box-sizing": "border-box",
+  },
+  backgroundGrid: {
+    "pointer-events": "none",
+    position: "absolute",
+    top: "0px",
+    left: "0px",
+    width: "100%",
+    height: "100%",
+    "background-color": "#ffffff",
+    "background-image":
+      "linear-gradient(#eeeeee 1px, transparent 1px), linear-gradient(90deg, #eeeeee 1px, transparent 1px)",
+  },
+  selectionBox: {
+    border: "1px solid #0ea5e9",
+    "background-color": "rgba(14, 165, 233, 0.1)",
+    position: "absolute",
+    "z-index": 9999,
+    "box-sizing": "border-box",
+    "transform-origin": "0 0",
+  },
+  transformControls: {
+    position: "absolute",
+    top: "0px",
+    left: "0px",
+    width: "100%",
+    height: "100%",
+    "pointer-events": "none",
+    border: "1px solid #0ea5e9",
+    "box-sizing": "border-box",
+  },
+  resizeHandle: {
+    position: "absolute",
+    border: "1px solid #0ea5e9",
+    "background-color": "white",
+    height: "8px",
+    width: "8px",
+    "pointer-events": "all",
+    "box-sizing": "border-box",
+    "z-index": 10000,
+  },
+  resizeHandleTopLeft: {
+    top: "0px",
+    left: "0px",
+    transform: "translate(-50%, -50%)",
+    cursor: "nwse-resize",
+  },
+  resizeHandleTopRight: {
+    top: "0px",
+    right: "0px",
+    transform: "translate(50%, -50%)",
+    cursor: "nesw-resize",
+  },
+  resizeHandleBottomLeft: {
+    bottom: "0px",
+    left: "0px",
+    transform: "translate(-50%, 50%)",
+    cursor: "nesw-resize",
+  },
+  resizeHandleBottomRight: {
+    bottom: "0px",
+    right: "0px",
+    transform: "translate(50%, 50%)",
+    cursor: "nwse-resize",
+  },
+};
 
 // --- STATE AND TYPE DEFINITIONS ---
 
@@ -164,13 +250,13 @@ export const Stage: ParentComponent<{
 }> = (props) => {
   return (
     <StageProvider stage={props.stage}>
-      <StageCanvas class={props.class} components={props.components} />
+      <StageCanvas components={props.components} class={props.class} />
       {props.children}
     </StageProvider>
   );
 };
 
-function StageCanvas(props: { class?: string; components: StageComponents }) {
+function StageCanvas(props: { components: StageComponents; class?: string }) {
   const {
     state,
     setState,
@@ -490,9 +576,10 @@ function StageCanvas(props: { class?: string; components: StageComponents }) {
   return (
     <main
       ref={stageRef}
-      class={`${styles.stage} ${props.class}`}
       tabIndex={0}
+      class={props.class}
       style={{
+        ...styles.stage,
         cursor:
           dragStart()?.target.type === "resize"
             ? getResizeCursor(dragStart()?.target.resizeDir)
@@ -504,8 +591,8 @@ function StageCanvas(props: { class?: string; components: StageComponents }) {
       <Dynamic component={props.components?.background ?? StageBackground} />
       <div
         ref={viewRef}
-        class={styles.view}
         style={{
+          ...styles.view,
           transform: `translate(${camera().x}px, ${camera().y}px) scale(${
             camera().zoom
           })`,
@@ -515,8 +602,8 @@ function StageCanvas(props: { class?: string; components: StageComponents }) {
           {([id, element]) => (
             <div
               data-element-id={id}
-              class={styles.element}
               style={{
+                ...styles.element,
                 "z-index": element.rect.zIndex,
                 transform: `translate(${element.rect.x}px, ${element.rect.y}px)`,
                 width: `${element.rect.width}px`,
@@ -539,8 +626,8 @@ function StageCanvas(props: { class?: string; components: StageComponents }) {
           {([ownerId, box]) => (
             <Show when={ownerId === clientId}>
               <div
-                class={styles.selectionBox}
                 style={{
+                  ...styles.selectionBox,
                   width: `${box.width}px`,
                   height: `${box.height}px`,
                   display: box.hidden ? "none" : "block",
@@ -560,8 +647,8 @@ function StageBackground() {
   const { camera } = useStage();
   return (
     <div
-      class={styles.backgroundGrid}
       style={{
+        ...styles.backgroundGrid,
         "background-position": `${camera().x}px ${camera().y}px`,
         "background-size": `${40 * camera().zoom}px ${40 * camera().zoom}px`,
       }}
@@ -596,27 +683,26 @@ export const ElementTransformControls: Component<{ elementId: string }> = (
   const { state, clientId } = useStage();
   return (
     <Show when={state.selectedElements[clientId]?.includes(props.elementId)}>
-      <div class={styles.transformControls}>
+      <div style={styles.transformControls}>
         <div
-          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="top left"
-          style={{}}
+          style={{ ...styles.resizeHandle, ...styles.resizeHandleTopLeft }}
         />
         <div
-          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="top right"
+          style={{ ...styles.resizeHandle, ...styles.resizeHandleTopRight }}
         />
         <div
-          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="bottom left"
+          style={{ ...styles.resizeHandle, ...styles.resizeHandleBottomLeft }}
         />
         <div
-          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="bottom right"
+          style={{ ...styles.resizeHandle, ...styles.resizeHandleBottomRight }}
         />
       </div>
     </Show>
