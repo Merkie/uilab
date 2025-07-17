@@ -2,7 +2,6 @@ import { createId } from "@paralleldrive/cuid2";
 import {
   batch,
   createContext,
-  createEffect,
   createSignal,
   For,
   onCleanup,
@@ -89,6 +88,8 @@ type CreateStageContextType = (props: {
   renderableElements: RenderableElements;
 }) => StageContextType;
 
+type StageComponents = { background?: ValidComponent };
+
 export const createStageContext: CreateStageContextType = ({
   renderableElements,
 }) => {
@@ -160,16 +161,17 @@ export const useStage = () => {
 export const Stage: ParentComponent<{
   class?: string;
   stage: StageContextType;
+  components?: StageComponents;
 }> = (props) => {
   return (
     <StageProvider stage={props.stage}>
-      <StageCanvas class={props.class} />
+      <StageCanvas class={props.class} components={props.components} />
       {props.children}
     </StageProvider>
   );
 };
 
-function StageCanvas(props: { class?: string }) {
+function StageCanvas(props: { class?: string; components?: StageComponents }) {
   const {
     state,
     setState,
@@ -487,25 +489,14 @@ function StageCanvas(props: { class?: string }) {
     window.removeEventListener("mouseup", onWindowMouseUp);
   });
 
-  createEffect(() => {
-    const cam = camera();
-    if (viewRef) {
-      viewRef.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.zoom})`;
-    }
-    if (stageRef) {
-      stageRef.style.backgroundPosition = `${cam.x}px ${cam.y}px`;
-      stageRef.style.backgroundSize = `${40 * cam.zoom}px ${40 * cam.zoom}px`;
-    }
-  });
-
   return (
     <main
       ref={stageRef}
       tabindex="0"
-      class={`stage ${props.class} focus:outline-none focus:ring-2 focus:ring-sky-500`}
+      class={`stage ${props.class}`}
       style={{
-        "background-position": `${camera().x}px ${camera().y}px`,
-        "background-size": `${40 * camera().zoom}px ${40 * camera().zoom}px`,
+        overflow: "hidden",
+        position: "relative",
         cursor:
           dragStart()?.target.type === "resize"
             ? getResizeCursor(dragStart()?.target.resizeDir)
@@ -514,6 +505,7 @@ function StageCanvas(props: { class?: string }) {
             : "default",
       }}
     >
+      <Dynamic component={props.components?.background ?? StageBackground} />
       <div
         ref={viewRef}
         style={{
@@ -523,6 +515,9 @@ function StageCanvas(props: { class?: string }) {
           width: "100%",
           height: "100%",
           "transform-origin": "0 0",
+          transform: `translate(${camera().x}px, ${camera().y}px) scale(${
+            camera().zoom
+          })`,
         }}
       >
         <For each={Object.entries(state.elements)}>
@@ -569,6 +564,27 @@ function StageCanvas(props: { class?: string }) {
         </For>
       </div>
     </main>
+  );
+}
+
+function StageBackground() {
+  const { camera } = useStage();
+  return (
+    <div
+      style={{
+        "pointer-events": "none",
+        position: "absolute",
+        top: "0",
+        left: "0",
+        width: "100%",
+        height: "100%",
+        "background-position": `${camera().x}px ${camera().y}px`,
+        "background-size": `${40 * camera().zoom}px ${40 * camera().zoom}px`,
+        "background-color": "#fff",
+        "background-image":
+          "linear-gradient(var(--color-zinc-100) 1px, transparent 1px), linear-gradient(90deg, var(--color-zinc-100) 1px, transparent 1px)",
+      }}
+    ></div>
   );
 }
 
