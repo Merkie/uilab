@@ -85,11 +85,11 @@ export type CanvasElementComponent = Component<{
 
 const StageContext = createContext<StageContextType>();
 
-type CreateStageStoreType = (props: {
+type CreateStageContextType = (props: {
   renderableElements: RenderableElements;
 }) => StageContextType;
 
-export const createStageStore: CreateStageStoreType = ({
+export const createStageContext: CreateStageContextType = ({
   renderableElements,
 }) => {
   const [state, setState] = createStore<StageState>({
@@ -98,10 +98,6 @@ export const createStageStore: CreateStageStoreType = ({
     selectionBoxes: {},
     selectedElements: {},
   });
-
-  // onMount(() => {
-  //   if (initialState?.elements) setState("elements", initialState.elements);
-  // });
 
   const clientId = createId();
   const [camera, setCamera] = createSignal({ x: 0, y: 0, zoom: 1 });
@@ -114,13 +110,15 @@ export const createStageStore: CreateStageStoreType = ({
   const createElement: StageContextType["createElement"] = (element) => {
     const id = createId();
     setState("elements", id, {
-      ...element,
+      type: element.type,
+      props: element.props,
       rect: { ...element.rect, zIndex: 1 },
     });
+
     return id;
   };
 
-  const store: StageContextType = {
+  const stage: StageContextType = {
     state,
     setState,
     clientId,
@@ -136,7 +134,7 @@ export const createStageStore: CreateStageStoreType = ({
     createElement,
   };
 
-  return store;
+  return stage;
 };
 
 const StageProvider: ParentComponent<{
@@ -216,9 +214,14 @@ function StageCanvas(props: { class?: string }) {
     }
 
     const target = event.target as HTMLElement;
-    const elementIdAttr = target.getAttribute("data-element-id");
-    const resizeDir = target.getAttribute("data-resize-dir");
 
+    const elementDiv = target.closest(
+      "[data-element-id]"
+    ) as HTMLElement | null;
+    const elementIdAttr = elementDiv?.dataset.elementId;
+    const resizeDir = target.dataset.resizeDir;
+
+    // Case 1: A resize handle was clicked
     if (resizeDir && elementIdAttr && state.elements[elementIdAttr]) {
       event.stopPropagation();
       setDragStart({
@@ -231,6 +234,7 @@ function StageCanvas(props: { class?: string }) {
           initialRect: { ...state.elements[elementIdAttr].rect },
         },
       });
+      // Case 2: An element itself was clicked
     } else if (elementIdAttr && state.elements[elementIdAttr]) {
       batch(() => {
         if (!state.selectedElements[clientId]?.includes(elementIdAttr)) {
@@ -253,7 +257,8 @@ function StageCanvas(props: { class?: string }) {
           target: { type: "elements", initialRects },
         });
       });
-    } else if (stageRef === target) {
+      // Case 3: The background was clicked
+    } else {
       setState("selectedElements", clientId, []);
       setDragStart({ stageX, stageY, target: { type: "stage" } });
     }
@@ -517,8 +522,6 @@ function StageCanvas(props: { class?: string }) {
           top: 0,
           width: "100%",
           height: "100%",
-          "pointer-events": "none",
-          // THIS IS THE FIX 👇
           "transform-origin": "0 0",
         }}
       >

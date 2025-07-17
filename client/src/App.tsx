@@ -1,20 +1,34 @@
 import { onMount } from "solid-js";
 import {
   CanvasElementComponent,
-  createStageStore,
+  createStageContext,
   ElementTransformControls,
   Stage,
+  useStage,
 } from "./solid-infinite-canvas";
 
 const CircleElement: CanvasElementComponent = ({ element, elementId }) => {
+  const { setState } = useStage();
+
   return (
     <>
       <div
         style={{
           "background-color": element.props.color,
         }}
-        class="pointer-events-none border absolute w-full h-full top-0 left-0 rounded-full"
-      ></div>
+        class="border absolute w-full h-full top-0 left-0 rounded-full grid place-items-center text-center text-white text-xl"
+        onClick={() => {
+          setState(
+            "elements",
+            elementId,
+            "props",
+            "count",
+            (c) => (c || 0) + 1
+          );
+        }}
+      >
+        <div>{element.props.count}</div>
+      </div>
       <ElementTransformControls elementId={elementId} />
     </>
   );
@@ -27,14 +41,16 @@ const RectangleElement: CanvasElementComponent = ({ element, elementId }) => {
         style={{
           "background-color": element.props.color,
         }}
-        class="pointer-events-none border absolute w-full h-full top-0 left-0"
-      ></div>
+        class="border absolute w-full h-full top-0 left-0 grid place-items-center text-center text-white text-xl"
+      >
+        <div>{element.props.count}</div>
+      </div>
       <ElementTransformControls elementId={elementId} />
     </>
   );
 };
 
-const stage = createStageStore({
+const stage = createStageContext({
   renderableElements: {
     circle: CircleElement,
     rectangle: RectangleElement,
@@ -46,12 +62,12 @@ function App() {
     stage.createElement({
       type: "circle",
       rect: { x: 50, y: 50, width: 100, height: 100 },
-      props: { color: "red" },
+      props: { color: "red", count: 0 },
     });
     stage.createElement({
       type: "rectangle",
       rect: { x: 400, y: 200, width: 100, height: 100 },
-      props: { color: "blue" },
+      props: { color: "blue", count: 0 },
     });
   });
 
@@ -65,22 +81,30 @@ function App() {
     stage.createElement({
       type,
       rect: { x, y, width: size, height: size },
-      props: { color: type === "circle" ? "green" : "yellow" },
+      props: {
+        color: type === "circle" ? "green" : "purple",
+        count: 0,
+      },
     });
   }
 
   return (
-    <div class="w-full bg-gray-800 min-h-screen p-4 gap-4">
+    <div class="w-full bg-gray-800 min-h-screen p-4 gap-4 flex flex-col items-start">
       <Stage
-        class="w-[800px] h-[800px] border border-gray-600 relative"
+        class="w-[800px] h-[800px] bg-gray-900 border border-gray-600 relative"
         stage={stage}
       />
-      <button class="p-2 bg-blue-500 text-white" onClick={createRandomElement}>
+      <button
+        class="p-2 bg-blue-500 text-white rounded"
+        onClick={createRandomElement}
+      >
         Create Element
       </button>
-      <pre class="p-4 text-white text-sm pointer-events-none">
-        {JSON.stringify(stage.state, null, 2)}
-      </pre>
+      <div class="w-[800px] bg-gray-900 border border-gray-600 text-white p-2 h-64 overflow-auto">
+        <pre class="text-xs pointer-events-none">
+          {JSON.stringify(stage.state, null, 2)}
+        </pre>
+      </div>
     </div>
   );
 }
