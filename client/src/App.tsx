@@ -83,14 +83,15 @@ function App() {
   };
 
   return (
-    <div class="flex w-full h-screen bg-gray-800 p-4 gap-4">
+    <div class="w-full bg-gray-800 p-4 gap-4">
       <Stage
-        class="w-1/2 h-full border border-gray-600"
+        class="w-[400px] h-[500px] border border-gray-600"
         initialState={stage1InitialState}
         renderableElements={renderableElements}
       />
+      <div class="h-[500px]"></div>
       <Stage
-        class="w-1/2 h-full border border-gray-600"
+        class="w-full h-[500px] border border-gray-600"
         initialState={stage2InitialState}
         renderableElements={renderableElements}
       />
