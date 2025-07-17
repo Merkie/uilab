@@ -244,19 +244,28 @@ export const useStage = () => {
 // --- STAGE COMPONENT ---
 
 export const Stage: ParentComponent<{
-  class?: string;
   stage: StageContextType;
   components: StageComponents;
+  class?: string;
+  style?: JSX.CSSProperties;
 }> = (props) => {
   return (
     <StageProvider stage={props.stage}>
-      <StageCanvas components={props.components} class={props.class} />
+      <StageCanvas
+        components={props.components}
+        class={props.class}
+        style={props.style}
+      />
       {props.children}
     </StageProvider>
   );
 };
 
-function StageCanvas(props: { components: StageComponents; class?: string }) {
+function StageCanvas(props: {
+  components: StageComponents;
+  class?: string;
+  style?: JSX.CSSProperties;
+}) {
   const {
     state,
     setState,
@@ -580,6 +589,7 @@ function StageCanvas(props: { components: StageComponents; class?: string }) {
       class={props.class}
       style={{
         ...styles.stage,
+        ...props.style,
         cursor:
           dragStart()?.target.type === "resize"
             ? getResizeCursor(dragStart()?.target.resizeDir)

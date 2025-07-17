@@ -15,8 +15,19 @@ const CircleElement: CanvasElementComponent = ({ element, elementId }) => {
       <div
         style={{
           "background-color": element.props.color,
+          border: "1px solid black",
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          top: 0,
+          left: 0,
+          "border-radius": "50%",
+          display: "grid",
+          "place-items": "center",
+          "text-align": "center",
+          color: "white",
+          "font-size": "1.5rem",
         }}
-        class="border absolute w-full h-full top-0 left-0 rounded-full grid place-items-center text-center text-white text-xl"
         onClick={() => {
           setState(
             "elements",
@@ -30,8 +41,9 @@ const CircleElement: CanvasElementComponent = ({ element, elementId }) => {
         <div
           style={{
             "text-shadow": "1px 1px 2px black",
+            "pointer-events": "none",
+            "user-select": "none",
           }}
-          class="pointer-events-none select-none"
         >
           {element.props.count}
         </div>
@@ -48,8 +60,18 @@ const RectangleElement: CanvasElementComponent = ({ element, elementId }) => {
       <div
         style={{
           "background-color": element.props.color,
+          border: "1px solid black",
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          top: 0,
+          left: 0,
+          display: "grid",
+          "place-items": "center",
+          "text-align": "center",
+          color: "white",
+          "font-size": "1.5rem",
         }}
-        class="border absolute w-full h-full top-0 left-0 grid place-items-center text-center text-white text-xl"
         onClick={() => {
           const colors =
             "red green blue yellow purple orange pink brown gray black white cyan magenta lime teal navy maroon olive silver gold coral salmon turquoise violet indigo crimson orchid plum khaki beige lavender mint peach tan azure chocolate sienna steelblue lightcoral".split(
@@ -62,8 +84,9 @@ const RectangleElement: CanvasElementComponent = ({ element, elementId }) => {
         <div
           style={{
             "text-shadow": "1px 1px 2px black",
+            "pointer-events": "none",
+            "user-select": "none",
           }}
-          class="pointer-events-none select-none"
         >
           {element.props.color}
         </div>
@@ -124,10 +147,25 @@ function App() {
   }
 
   return (
-    <div class="w-full bg-gray-800 min-h-screen p-4 gap-4 flex flex-col items-start">
-      <div class="flex gap-4">
+    <div
+      style={{
+        display: "flex",
+        "flex-direction": "column",
+        gap: "20px",
+        padding: "20px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: "20px",
+        }}
+      >
         <Stage
-          class="w-[500px] h-[500px] bg-gray-900 border border-gray-600 relative"
+          style={{
+            width: "500px",
+            height: "500px",
+          }}
           stage={stage}
           components={{
             background: CustomStageBackground,
@@ -138,7 +176,10 @@ function App() {
           }}
         />
         <Stage
-          class="w-[500px] h-[500px] bg-gray-900 border border-gray-600 relative"
+          style={{
+            width: "500px",
+            height: "500px",
+          }}
           stage={stage2}
           components={{
             elements: {
@@ -148,17 +189,7 @@ function App() {
           }}
         />
       </div>
-      <button
-        class="p-2 bg-blue-500 text-white rounded"
-        onClick={createRandomElement}
-      >
-        Create Element
-      </button>
-      <div class="w-[800px] bg-gray-900 border border-gray-600 text-white p-2 h-64 overflow-auto">
-        <pre class="text-xs pointer-events-none">
-          {JSON.stringify(stage.state, null, 2)}
-        </pre>
-      </div>
+      <button onClick={createRandomElement}>Create Element</button>
     </div>
   );
 }
@@ -176,9 +207,8 @@ function CustomStageBackground() {
         height: "100%",
         "background-position": `${camera().x}px ${camera().y}px`,
         "background-size": `${40 * camera().zoom}px ${40 * camera().zoom}px`,
-        "background-color": "var(--color-zinc-900)",
-        "background-image":
-          "linear-gradient(var(--color-zinc-800) 1px, transparent 1px), linear-gradient(90deg, var(--color-zinc-800) 1px, transparent 1px)",
+        "background-image": `radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px), radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px)`,
+        "background-color": "#1a1a1a",
       }}
     ></div>
   );
