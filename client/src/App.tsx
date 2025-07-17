@@ -3,6 +3,7 @@ import {
   createInitialState,
   ElementTransformControls,
   Stage,
+  useStage,
 } from "./solid-infinite-canvas";
 
 const CircleElement: CanvasElementComponent = ({ element, elementId }) => {
@@ -43,7 +44,7 @@ function App() {
   return (
     <div class="w-full bg-gray-800 p-4 gap-4">
       <Stage
-        class="w-[800px] h-[800px] border border-gray-600"
+        class="w-[800px] h-[800px] border border-gray-600 relative"
         initialState={createInitialState([
           {
             type: "circle",
@@ -57,14 +58,19 @@ function App() {
           },
         ])}
         renderableElements={renderableElements}
-      />
-      <div class="h-[500px]"></div>
-      {/* <Stage
-        class="w-full h-[500px] border border-gray-600"
-        initialState={stage2InitialState}
-        renderableElements={renderableElements}
-      /> */}
+      >
+        <StageStateJSON />
+      </Stage>
     </div>
+  );
+}
+
+function StageStateJSON() {
+  const { state } = useStage();
+  return (
+    <pre class="absolute top-0 left-[800px] p-4 text-white text-sm">
+      {JSON.stringify(state, null, 2)}
+    </pre>
   );
 }
 

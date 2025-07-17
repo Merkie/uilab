@@ -136,7 +136,7 @@ export const useStage = () => {
 
 // --- STAGE COMPONENT ---
 
-export const Stage: Component<{
+export const Stage: ParentComponent<{
   class?: string;
   initialState?: Partial<StageState>;
   renderableElements: RenderableElements;
@@ -147,6 +147,7 @@ export const Stage: Component<{
       renderableElements={props.renderableElements}
     >
       <StageCanvas class={props.class} />
+      {props.children}
     </StageProvider>
   );
 };
@@ -530,8 +531,9 @@ function StageCanvas(props: { class?: string }) {
           {([ownerId, box]) => (
             <Show when={ownerId === clientId}>
               <div
-                class="bg-sky-500/10 border border-sky-500"
                 style={{
+                  border: "1px solid rgb(52, 183, 235)",
+                  "background-color": "rgba(52, 183, 235, 0.1)",
                   transform: `translate(${box.x}px, ${box.y}px)`,
                   width: `${box.width}px`,
                   height: `${box.height}px`,
@@ -579,26 +581,66 @@ export const ElementTransformControls: Component<{ elementId: string }> = (
         <div
           data-element-id={props.elementId}
           data-resize-dir="top left"
-          class="w-[8px] h-[8px] bg-white absolute top-0 left-0 -translate-y-1/2 -translate-x-1/2 border border-sky-500"
-          style={{ "pointer-events": "all", cursor: "nwse-resize" }}
+          style={{
+            position: "absolute",
+            top: "0",
+            left: "0",
+            transform: "translate(-50%, -50%)",
+            border: "1px solid rgb(52, 183, 235)",
+            "background-color": "white",
+            height: "8px",
+            width: "8px",
+            "pointer-events": "all",
+            cursor: "nwse-resize",
+          }}
         />
         <div
           data-element-id={props.elementId}
           data-resize-dir="top right"
-          class="w-[8px] h-[8px] bg-white absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 border border-sky-500"
-          style={{ "pointer-events": "all", cursor: "nesw-resize" }}
+          style={{
+            position: "absolute",
+            top: "0",
+            right: "0",
+            transform: "translate(50%, -50%)",
+            border: "1px solid rgb(52, 183, 235)",
+            "background-color": "white",
+            height: "8px",
+            width: "8px",
+            "pointer-events": "all",
+            cursor: "nesw-resize",
+          }}
         />
         <div
           data-element-id={props.elementId}
           data-resize-dir="bottom left"
-          class="w-[8px] h-[8px] bg-white absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 border border-sky-500"
-          style={{ "pointer-events": "all", cursor: "nesw-resize" }}
+          style={{
+            position: "absolute",
+            bottom: "0",
+            left: "0",
+            transform: "translate(-50%, 50%)",
+            border: "1px solid rgb(52, 183, 235)",
+            "background-color": "white",
+            height: "8px",
+            width: "8px",
+            "pointer-events": "all",
+            cursor: "nesw-resize",
+          }}
         />
         <div
           data-element-id={props.elementId}
           data-resize-dir="bottom right"
-          class="w-[8px] h-[8px] bg-white absolute bottom-0 right-0 translate-y-1/2 translate-x-1/2 border border-sky-500"
-          style={{ "pointer-events": "all", cursor: "nwse-resize" }}
+          style={{
+            position: "absolute",
+            bottom: "0",
+            right: "0",
+            transform: "translate(50%, 50%)",
+            border: "1px solid rgb(52, 183, 235)",
+            "background-color": "white",
+            height: "8px",
+            width: "8px",
+            "pointer-events": "all",
+            cursor: "nwse-resize",
+          }}
         />
       </div>
     </Show>
