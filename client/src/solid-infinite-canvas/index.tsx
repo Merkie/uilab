@@ -27,6 +27,10 @@ type ElementState = {
   props: Record<string, any>;
 };
 
+type UncreatedElementState = Omit<ElementState, "rect"> & {
+  rect: Omit<ElementState["rect"], "zIndex">;
+};
+
 type StageState = {
   elements: Record<string, ElementState>;
   cursors: Record<string, { x: number; y: number }>;
@@ -66,6 +70,7 @@ type StageContextType = {
   panning: Accessor<boolean>;
   setPanning: Setter<boolean>;
   renderableElements: RenderableElements;
+  createElement: (args: UncreatedElementState) => string;
 };
 
 export type ElementRendererComponent = Component<{
@@ -80,10 +85,13 @@ export type CanvasElementComponent = Component<{
 
 const StageContext = createContext<StageContextType>();
 
-const StageProvider: ParentComponent<{
-  initialState?: Partial<StageState>;
+type CreateStageStoreType = (props: {
   renderableElements: RenderableElements;
-}> = (props) => {
+}) => StageContextType;
+
+export const createStageStore: CreateStageStoreType = ({
+  renderableElements,
+}) => {
   const [state, setState] = createStore<StageState>({
     elements: {},
     cursors: {},
@@ -91,10 +99,9 @@ const StageProvider: ParentComponent<{
     selectedElements: {},
   });
 
-  onMount(() => {
-    if (props.initialState?.elements)
-      setState("elements", props.initialState.elements);
-  });
+  // onMount(() => {
+  //   if (initialState?.elements) setState("elements", initialState.elements);
+  // });
 
   const clientId = createId();
   const [camera, setCamera] = createSignal({ x: 0, y: 0, zoom: 1 });
@@ -103,6 +110,15 @@ const StageProvider: ParentComponent<{
     { stageX: number; stageY: number; target: DragTarget } | undefined
   >(undefined);
   const [panning, setPanning] = createSignal(false);
+
+  const createElement: StageContextType["createElement"] = (element) => {
+    const id = createId();
+    setState("elements", id, {
+      ...element,
+      rect: { ...element.rect, zIndex: 1 },
+    });
+    return id;
+  };
 
   const store: StageContextType = {
     state,
@@ -116,11 +132,18 @@ const StageProvider: ParentComponent<{
     setDragStart,
     panning,
     setPanning,
-    renderableElements: props.renderableElements,
+    renderableElements: renderableElements,
+    createElement,
   };
 
+  return store;
+};
+
+const StageProvider: ParentComponent<{
+  store: StageContextType;
+}> = (props) => {
   return (
-    <StageContext.Provider value={store}>
+    <StageContext.Provider value={props.store}>
       {props.children}
     </StageContext.Provider>
   );
@@ -138,14 +161,10 @@ export const useStage = () => {
 
 export const Stage: ParentComponent<{
   class?: string;
-  initialState?: Partial<StageState>;
-  renderableElements: RenderableElements;
+  store: StageContextType;
 }> = (props) => {
   return (
-    <StageProvider
-      initialState={props.initialState}
-      renderableElements={props.renderableElements}
-    >
+    <StageProvider store={props.store}>
       <StageCanvas class={props.class} />
       {props.children}
     </StageProvider>
@@ -647,11 +666,7 @@ export const ElementTransformControls: Component<{ elementId: string }> = (
   );
 };
 
-export function createInitialState(
-  elements: (Omit<ElementState, "rect"> & {
-    rect: Omit<ElementState["rect"], "zIndex">;
-  })[]
-) {
+export function createInitialState(elements: UncreatedElementState[]) {
   const initialState = elements.reduce((acc, el) => {
     acc[createId()] = {
       ...el,
