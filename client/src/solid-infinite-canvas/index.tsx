@@ -17,6 +17,7 @@ import {
 import { createStore, SetStoreFunction, Store } from "solid-js/store";
 import { Dynamic } from "solid-js/web";
 import gsap from "gsap";
+import styles from "./styles.module.css";
 
 // --- STATE AND TYPE DEFINITIONS ---
 
@@ -68,7 +69,6 @@ type StageContextType = {
   >;
   panning: Accessor<boolean>;
   setPanning: Setter<boolean>;
-  renderableElements: RenderableElements;
   createElement: (args: UncreatedElementState) => string;
 };
 
@@ -84,15 +84,15 @@ export type CanvasElementComponent = Component<{
 
 const StageContext = createContext<StageContextType>();
 
-type CreateStageContextType = (props: {
-  renderableElements: RenderableElements;
-}) => StageContextType;
+type CreateStageContextType = () => StageContextType;
 
-type StageComponents = { background?: ValidComponent };
+type ElementType = string;
+type StageComponents = {
+  elements: Record<ElementType, CanvasElementComponent>;
+  background?: ValidComponent;
+};
 
-export const createStageContext: CreateStageContextType = ({
-  renderableElements,
-}) => {
+export const createStageContext: CreateStageContextType = () => {
   const [state, setState] = createStore<StageState>({
     elements: {},
     cursors: {},
@@ -131,7 +131,6 @@ export const createStageContext: CreateStageContextType = ({
     setDragStart,
     panning,
     setPanning,
-    renderableElements: renderableElements,
     createElement,
   };
 
@@ -161,7 +160,7 @@ export const useStage = () => {
 export const Stage: ParentComponent<{
   class?: string;
   stage: StageContextType;
-  components?: StageComponents;
+  components: StageComponents;
 }> = (props) => {
   return (
     <StageProvider stage={props.stage}>
@@ -171,7 +170,7 @@ export const Stage: ParentComponent<{
   );
 };
 
-function StageCanvas(props: { class?: string; components?: StageComponents }) {
+function StageCanvas(props: { class?: string; components: StageComponents }) {
   const {
     state,
     setState,
@@ -183,7 +182,6 @@ function StageCanvas(props: { class?: string; components?: StageComponents }) {
     setDragStart,
     panning,
     setPanning,
-    renderableElements,
   } = useStage();
 
   let stageRef: HTMLDivElement | undefined;
@@ -492,11 +490,9 @@ function StageCanvas(props: { class?: string; components?: StageComponents }) {
   return (
     <main
       ref={stageRef}
-      tabindex="0"
-      class={`stage ${props.class}`}
+      class={`${styles.stage} ${props.class}`}
+      tabIndex={0}
       style={{
-        overflow: "hidden",
-        position: "relative",
         cursor:
           dragStart()?.target.type === "resize"
             ? getResizeCursor(dragStart()?.target.resizeDir)
@@ -508,13 +504,8 @@ function StageCanvas(props: { class?: string; components?: StageComponents }) {
       <Dynamic component={props.components?.background ?? StageBackground} />
       <div
         ref={viewRef}
+        class={styles.view}
         style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: "100%",
-          height: "100%",
-          "transform-origin": "0 0",
           transform: `translate(${camera().x}px, ${camera().y}px) scale(${
             camera().zoom
           })`,
@@ -524,8 +515,8 @@ function StageCanvas(props: { class?: string; components?: StageComponents }) {
           {([id, element]) => (
             <div
               data-element-id={id}
+              class={styles.element}
               style={{
-                position: "absolute",
                 "z-index": element.rect.zIndex,
                 transform: `translate(${element.rect.x}px, ${element.rect.y}px)`,
                 width: `${element.rect.width}px`,
@@ -539,7 +530,7 @@ function StageCanvas(props: { class?: string; components?: StageComponents }) {
               <Dynamic
                 component={ElementRenderer}
                 elementId={id}
-                renderableElements={renderableElements}
+                renderableElements={props.components.elements}
               />
             </div>
           )}
@@ -548,15 +539,13 @@ function StageCanvas(props: { class?: string; components?: StageComponents }) {
           {([ownerId, box]) => (
             <Show when={ownerId === clientId}>
               <div
+                class={styles.selectionBox}
                 style={{
-                  border: "1px solid rgb(52, 183, 235)",
-                  "background-color": "rgba(52, 183, 235, 0.1)",
-                  transform: `translate(${box.x}px, ${box.y}px)`,
                   width: `${box.width}px`,
                   height: `${box.height}px`,
                   display: box.hidden ? "none" : "block",
-                  position: "absolute",
-                  "z-index": 99999,
+                  left: `${box.x}px`,
+                  top: `${box.y}px`,
                 }}
               />
             </Show>
@@ -571,18 +560,10 @@ function StageBackground() {
   const { camera } = useStage();
   return (
     <div
+      class={styles.backgroundGrid}
       style={{
-        "pointer-events": "none",
-        position: "absolute",
-        top: "0",
-        left: "0",
-        width: "100%",
-        height: "100%",
         "background-position": `${camera().x}px ${camera().y}px`,
         "background-size": `${40 * camera().zoom}px ${40 * camera().zoom}px`,
-        "background-color": "#fff",
-        "background-image":
-          "linear-gradient(var(--color-zinc-100) 1px, transparent 1px), linear-gradient(90deg, var(--color-zinc-100) 1px, transparent 1px)",
       }}
     ></div>
   );
@@ -615,68 +596,48 @@ export const ElementTransformControls: Component<{ elementId: string }> = (
   const { state, clientId } = useStage();
   return (
     <Show when={state.selectedElements[clientId]?.includes(props.elementId)}>
-      <div class="w-full h-full absolute top-0 pointer-events-none left-0 border border-sky-500">
+      <div class={styles.transformControls}>
         <div
+          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="top left"
           style={{
-            position: "absolute",
             top: "0",
             left: "0",
             transform: "translate(-50%, -50%)",
-            border: "1px solid rgb(52, 183, 235)",
-            "background-color": "white",
-            height: "8px",
-            width: "8px",
-            "pointer-events": "all",
             cursor: "nwse-resize",
           }}
         />
         <div
+          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="top right"
           style={{
-            position: "absolute",
             top: "0",
             right: "0",
             transform: "translate(50%, -50%)",
-            border: "1px solid rgb(52, 183, 235)",
-            "background-color": "white",
-            height: "8px",
-            width: "8px",
-            "pointer-events": "all",
             cursor: "nesw-resize",
           }}
         />
         <div
+          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="bottom left"
           style={{
-            position: "absolute",
             bottom: "0",
             left: "0",
             transform: "translate(-50%, 50%)",
-            border: "1px solid rgb(52, 183, 235)",
-            "background-color": "white",
-            height: "8px",
-            width: "8px",
-            "pointer-events": "all",
             cursor: "nesw-resize",
           }}
         />
         <div
+          class={styles.resizeHandle}
           data-element-id={props.elementId}
           data-resize-dir="bottom right"
           style={{
-            position: "absolute",
             bottom: "0",
             right: "0",
             transform: "translate(50%, 50%)",
-            border: "1px solid rgb(52, 183, 235)",
-            "background-color": "white",
-            height: "8px",
-            width: "8px",
-            "pointer-events": "all",
             cursor: "nwse-resize",
           }}
         />

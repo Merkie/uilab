@@ -73,19 +73,9 @@ const RectangleElement: CanvasElementComponent = ({ element, elementId }) => {
   );
 };
 
-const stage = createStageContext({
-  renderableElements: {
-    circle: CircleElement,
-    rectangle: RectangleElement,
-  },
-});
+const stage = createStageContext();
 
-const stage2 = createStageContext({
-  renderableElements: {
-    circle: CircleElement,
-    rectangle: RectangleElement,
-  },
-});
+const stage2 = createStageContext();
 
 function App() {
   onMount(() => {
@@ -99,6 +89,10 @@ function App() {
       rect: { x: 400, y: 200, width: 100, height: 100 },
       props: { color: "blue", count: 0 },
     });
+    stage.setCamera((prev) => ({
+      ...prev,
+      zoom: 0.75,
+    }));
 
     stage2.createElement({
       type: "circle",
@@ -137,11 +131,21 @@ function App() {
           stage={stage}
           components={{
             background: CustomStageBackground,
+            elements: {
+              circle: CircleElement,
+              rectangle: RectangleElement,
+            },
           }}
         />
         <Stage
           class="w-[500px] h-[500px] bg-gray-900 border border-gray-600 relative"
           stage={stage2}
+          components={{
+            elements: {
+              circle: CircleElement,
+              rectangle: RectangleElement,
+            },
+          }}
         />
       </div>
       <button
